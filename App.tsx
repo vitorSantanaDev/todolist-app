@@ -1,6 +1,8 @@
+import { theme } from "@theme/theme";
 import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, View } from "react-native";
+import { Home } from "src/screens/Home";
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -13,7 +15,8 @@ export default function App() {
   }
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
+      <Home />
     </View>
   );
 }
@@ -21,8 +24,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: theme.colors.gray600,
   },
 });

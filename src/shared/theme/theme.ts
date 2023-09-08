@@ -1,3 +1,29 @@
+import { Dimensions, PixelRatio } from "react-native";
+
+/**
+ * @description It receives as a parameter a value that will be defined for the width, height, padding, margin and font of elements in the interface.
+ * @returns Returns a number dynamically based on device size
+ * @summary
+ * This method performs a calculation
+ * based on the width of the UI prototype. Seeking
+ * first to know how many percent the pixel value received as
+ * a parameter represents the size of the UI prototype.
+ * After that we use the roundToNearestPixel method, to round the device width multiplied by parseFloat(widthUIPercent) / 100.
+ * **/
+const pixel = (valuePx: number) => {
+  const prototypeWidth = 375;
+
+  const widthPercent = (valuePx / prototypeWidth) * 100;
+
+  const { width } = Dimensions.get("window");
+
+  const screenPixel = PixelRatio.roundToNearestPixel(
+    (width * parseFloat(String(widthPercent))) / 100
+  );
+
+  return screenPixel;
+};
+
 export const theme = {
   colors: {
     blue: "#4EA8DE",
@@ -19,10 +45,13 @@ export const theme = {
       small: 14,
       medium: 16,
     },
-    lineHeight: "140%",
+    lineHeight: 140,
     weight: {
       regular: "Inter-Regular",
       bold: "Inter-Bold",
     },
+  },
+  metrics: {
+    pixel,
   },
 };

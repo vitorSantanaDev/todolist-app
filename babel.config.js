@@ -11,6 +11,7 @@ module.exports = function (api) {
           alias: {
             "@assets": "./assets",
             "@theme": "./src/shared/theme",
+            "@components": "./src/shared/components",
           },
         },
       ],
