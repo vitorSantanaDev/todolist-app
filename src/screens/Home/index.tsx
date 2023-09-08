@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import UUID from "uuid-random";
 import { Alert, ScrollView, View } from "react-native";
 
@@ -20,6 +20,10 @@ export function Home() {
   >([]);
 
   const [taskDescription, setTaskDescription] = useState("");
+
+  const numberOfTasksCompleted = useMemo(() => {
+    return tasks.filter((task) => task.completed).length;
+  }, [tasks]);
 
   function handleCompleteTask(taskID: string) {
     setTasks((prevState) => {
@@ -87,12 +91,12 @@ export function Home() {
         </View>
         <View style={styles.row}>
           <QuantityOfTasks
-            quantity={0}
+            quantity={numberOfTasksCompleted}
             label="Completed"
             labelColor={theme.colors.blue}
           />
           <QuantityOfTasks
-            quantity={0}
+            quantity={tasks.length}
             label="Created"
             labelColor={theme.colors.purple}
           />
