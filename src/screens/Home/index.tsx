@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import UUID from "uuid-random";
 import { Alert, ScrollView, View } from "react-native";
+import { useAsyncStorage } from "@react-native-async-storage/async-storage";
 
 import { Task } from "@components/Task";
 import { Header } from "@components/Header";
@@ -12,69 +13,133 @@ import { PlaceholderEmptyToDoList } from "@components/PlaceholderEmptyToDoList";
 import { theme } from "@theme/theme";
 import { stylesSheet } from "./styles";
 
+type Task = {
+  id: string;
+  task: string;
+  completed: boolean;
+};
+
 const styles = stylesSheet();
 
+const TASK_STORAGE_KEY = "@todo:tasks";
+
 export function Home() {
-  const [tasks, setTasks] = useState<
-    { id: string; task: string; completed: boolean }[]
-  >([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   const [taskDescription, setTaskDescription] = useState("");
+
+  const { getItem, setItem } = useAsyncStorage(TASK_STORAGE_KEY);
 
   const numberOfTasksCompleted = useMemo(() => {
     return tasks.filter((task) => task.completed).length;
   }, [tasks]);
 
-  function handleCompleteTask(taskID: string) {
-    setTasks((prevState) => {
-      const taskToBeCompletedIndex = prevState.findIndex(
+  async function handleCompleteTask(taskID: string) {
+    try {
+      const stateCopy = [...tasks];
+
+      const taskToBeCompletedIndex = stateCopy.findIndex(
         (task) => task.id === taskID
       );
-
-      if (taskToBeCompletedIndex === -1) return prevState;
-
-      const stateCopy = [...prevState];
 
       stateCopy[taskToBeCompletedIndex].completed =
         !stateCopy[taskToBeCompletedIndex].completed;
 
-      return stateCopy;
-    });
-  }
+      if (taskToBeCompletedIndex === -1) return taskToBeCompletedIndex;
 
-  function handleDeleteTask(taskID: string) {
-    const taskToBeDeleted = tasks.find((task) => task.id === taskID);
+      setTasks(stateCopy);
 
-    if (!taskToBeDeleted) return;
-
-    Alert.alert(`Do you want to remove the task ${taskToBeDeleted.task}?`, "", [
-      {
-        text: "Yes",
-        onPress: () =>
-          setTasks((prevState) =>
-            prevState.filter((item) => item.id !== taskID)
-          ),
-      },
-      { text: "No", style: "cancel" },
-    ]);
-  }
-
-  function handleCreateTask(taskDescription: string) {
-    const taskAlreadyExists = tasks.findIndex(
-      (task) => task.task.toLowerCase() === taskDescription.toLowerCase()
-    );
-
-    if (taskAlreadyExists !== -1) {
-      Alert.alert("Task already exists");
-      return;
+      await setItem(JSON.stringify([...stateCopy]));
+    } catch (err) {
+      console.log({ err, message: "Unable to complete your task!" });
+      Alert.alert("Unable to complete your task!");
     }
-
-    setTaskDescription("");
-    setTasks((prevState) => [
-      ...prevState,
-      { id: UUID(), completed: false, task: taskDescription },
-    ]);
   }
+
+  async function handleDeleteTask(taskID: string) {
+    try {
+      const taskToBeDeleted = tasks.find((task) => task.id === taskID);
+
+      if (!taskToBeDeleted) return;
+
+      function confirmDeleteTask() {
+        const newState = tasks.filter((task) => task.id !== taskID);
+        setTasks(newState);
+
+        (async () => {
+          await setItem(JSON.stringify(newState));
+        })();
+      }
+
+      Alert.alert(
+        `Do you want to remove the task ${taskToBeDeleted.task}?`,
+        "",
+        [
+          {
+            text: "Yes",
+            onPress: confirmDeleteTask,
+          },
+          { text: "No", style: "cancel" },
+        ]
+      );
+    } catch (err) {
+      console.log({ err, message: "Unable to delete your task!" });
+      Alert.alert("Unable to delete your task!");
+    }
+  }
+
+  async function handleCreateTask(taskDescription: string) {
+    try {
+      const taskAlreadyExists = tasks.findIndex(
+        (task) => task.task.toLowerCase() === taskDescription.toLowerCase()
+      );
+
+      if (taskAlreadyExists !== -1) {
+        Alert.alert("Task already exists");
+        return;
+      }
+
+      const newTask = { id: UUID(), completed: false, task: taskDescription };
+
+      setTaskDescription("");
+
+      setTasks((prevState) => [...prevState, newTask]);
+
+      const tasksAlreadyInTheDeviceMemory =
+        await handleFetchDataStoredInTheDeviceMemory();
+
+      if (!tasksAlreadyInTheDeviceMemory.length) {
+        await setItem(JSON.stringify([newTask]));
+        return;
+      }
+
+      await setItem(
+        JSON.stringify([...tasksAlreadyInTheDeviceMemory, newTask])
+      );
+    } catch (err) {
+      console.log({ err, message: "Unable to register your new task!" });
+      Alert.alert("Unable to register your new task!");
+    }
+  }
+
+  async function handleFetchDataStoredInTheDeviceMemory(): Promise<Task[]> {
+    const response = await getItem();
+    if (typeof response !== "string") return [];
+    return JSON.parse(response) as Task[];
+  }
+
+  useEffect(() => {
+    (async () => {
+      const tasksAlreadyInTheDeviceMemory =
+        await handleFetchDataStoredInTheDeviceMemory();
+
+      if (tasksAlreadyInTheDeviceMemory.length) {
+        setTasks(tasksAlreadyInTheDeviceMemory);
+      } else {
+        setTasks([]);
+      }
+    })();
+  }, []);
 
   return (
     <ScrollView>
